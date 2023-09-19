@@ -1,0 +1,192 @@
+openapi: 3.0.1
+info:
+  title: ÁÜVR->ESB REST API
+  version: 1.0.0
+paths:
+  '/consumption/{podId}':
+    description: 'POD fogyasztási adatainak lekérdezése'
+    put:
+      parameters: 
+        - in: path
+          name: podId
+          schema:
+            type: string
+          required: true
+          description: 'POD azonosító'
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date
+          required: false
+          description: 'Fogyasztási adatok kezdete'
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date
+          required: false
+          description: 'Fogyasztási adatok vége'
+      responses:
+        '200':
+          description: 'Fogyasztási adatok lekérdezése sikeresen kezdeményezve'
+        '400':
+          description: 'Fogyasztási adatok lekérdezése hibás adatokkal'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: 'Felhasználó azonosítása sikertelen'
+        '403':
+          description: 'Fogyasztási adatok lekérdezése jogosultság hiányában megtagadva'
+  '/pricing-result/{requestId}':
+    description: 'Árazási feladat eredményének átadása'
+    put:
+      parameters: 
+        - in: path
+          name: requestId
+          schema:
+            type: integer
+          required: true
+          description: 'Az árazási feladat kérés egyedi azonosítója'
+      requestBody:
+        description: 'Árazás eredménye'
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuotePricingResult'
+      responses:
+        '200':
+          description: 'Árazási feladat eredményének átadása sikeres'
+        '400':
+          description: 'Hibás árazás árazási eredmény'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: 'Felhasználó azonosítása sikertelen'
+        '403':
+          description: 'Árazási feladat eredményének átadása jogosultság hiányában megtagadva'
+  '/pricingtask-status/{requestId}':
+    description: 'Árazási feladat státuszának frissítése'
+    put:
+      parameters: 
+        - in: path
+          name: requestId
+          schema:
+            type: integer
+          required: true
+          description: 'Az árazási feladat kérés egyedi azonosítója'
+      requestBody:
+        description: 'Az árazási feladat új státusza'
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                state:
+                  type: string
+                  enum: ['MANUALIS_ARAZAS_ALATT', 'UTEMEZETT', 'ELUTASITOTT', 'VARAKOZTATOTT', 'HIBAS']
+                message:
+                  type: string
+              required:
+                - state
+      responses:
+        '200':
+          description: 'Az árazási feladat státuszának állítása sikeres'
+        '400':
+          description: 'Státuszfrissítés sikertelen'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: 'Felhasználó azonosítása sikertelen'
+        '403':
+          description: 'Státusz állításának módosítása jogosultság hiányában megtagadva'         
+    
+components:
+  schemas:
+  
+    BadRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        validationErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              error:
+                type: string
+            required:
+              - key
+              - error
+      required:
+        - message
+  
+    DateTimeType:
+      type: string
+      format: date-time
+      example: '2023-01-01T22:40:30.000Z'
+      
+    QuotePricingResult:
+      type: object
+      properties:
+        quotePricingResult:
+          type: object
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupPricingResult'
+      required:
+        - quotePricingResult
+        - groups
+        
+    GroupPricingResult:
+      type: object
+      properties:
+        groupId:
+          type: string
+        groupPricingResult:
+          type: object
+        pods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PODPricingResult'
+      required:
+        - groupId
+        - groupPricingResult
+        - pods
+              
+    PODPricingResult:
+      type: object
+      properties:
+        podId:
+          type: string
+        PODPricingResult:
+          type: object
+        consumption:
+          $ref: '#/components/schemas/EmbeddedProfile'
+      required:
+        - podId
+        - PODPricingResult
+        - consumption
+        
+    EmbeddedProfile:
+      type: array
+      items:
+        type: object
+        properties:
+          dateTime:
+            $ref: '#/components/schemas/DateTimeType'
+          value:
+            type: number
+            minimum: 0
